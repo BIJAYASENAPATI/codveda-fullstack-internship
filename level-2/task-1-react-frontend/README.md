@@ -1,16 +1,52 @@
-# React + Vite
+# Level 2 - Task 1: Frontend with React
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Codveda Technologies Full Stack Development Internship
 
-Currently, two official plugins are available:
+This project recreates the Level 1 frontend using React and a component-based architecture.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Task Objective
 
-## React Compiler
+Build a frontend using a modern JavaScript framework and interact with the REST API.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Features
 
-## Expanding the ESLint configuration
+- React functional components
+- Component-based architecture
+- Reusable UI components
+- REST API integration
+- Dynamic user data rendering
+- Loading state handling
+- Navigation
+- Responsive UI
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Technologies Used
+
+- React
+- Vite
+- JavaScript
+- CSS
+- Fetch API
+
+## Project Structure
+
+```text
+task-1-react-frontend/
+├── public/
+├── src/
+│   ├── assets/
+│   ├── components/
+│   │   ├── Loading.jsx
+│   │   ├── Navbar.jsx
+│   │   ├── UserForm.jsx
+│   │   └── UserList.jsx
+│   ├── pages/
+│   │   ├── Home.jsx
+│   │   └── Users.jsx
+│   ├── services/
+│   │   └── userService.js
+│   ├── App.css
+│   ├── App.jsx
+│   ├── index.css
+│   └── main.jsx
+├── package.json
+└── vite.config.js
