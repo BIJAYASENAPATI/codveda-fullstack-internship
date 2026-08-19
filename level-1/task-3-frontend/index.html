@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Codveda User Management</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header class="header">
+        <div class="container">
+            <h1>User Management System</h1>
+            <p>Codveda Technologies - Level 1 Task 3</p>
+        </div>
+    </header>
+
+
+    <main class="container">
+
+        <!-- User Form -->
+        <section class="card">
+
+            <h2>Add User</h2>
+
+            <form id="userForm">
+
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" placeholder="Enter name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="Enter email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="age">Age</label>
+                    <input type="number" id="age" placeholder="Enter age" min="1" required>
+                </div>
+
+                <button type="submit" class="btn">
+                    Add User
+                </button>
+
+            </form>
+
+            <p id="message"></p>
+
+        </section>
+
+
+        <!-- Users -->
+        <section class="card">
+
+            <div class="section-header">
+
+                <div>
+                    <h2>Users</h2>
+                    <p>Users fetched from the REST API</p>
+                </div>
+
+                <button id="refreshBtn" class="btn secondary">
+                    Refresh
+                </button>
+
+            </div>
+
+
+            <div id="loading">
+                Loading users...
+            </div>
+
+
+            <div class="table-container">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Age</th>
+                            <th>Action</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="userTableBody">
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <footer>
+        <p>
+            Codveda Technologies | Full Stack Development Internship
+        </p>
+    </footer>
+
+
+    <script src="script.js"></script>
+
+</body>
+
+</html>
