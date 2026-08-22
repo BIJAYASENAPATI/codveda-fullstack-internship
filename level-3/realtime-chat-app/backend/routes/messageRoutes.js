@@ -78,4 +78,44 @@ router.delete(
 );
 
 
+// ========================================
+// PIN MESSAGE
+// POST /api/messages/:id/pin
+// Protected
+// ========================================
+
+router.post(
+  "/:id/pin",
+  authN,
+  async (req, res, next) => {
+    try {
+      const { pinMessage } = require("../controllers/messageController");
+      await pinMessage(req, res);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+
+// ========================================
+// FORWARD MESSAGE
+// POST /api/messages/:id/forward
+// Protected
+// ========================================
+
+router.post(
+  "/:id/forward",
+  authN,
+  async (req, res, next) => {
+    try {
+      const { forwardMessage } = require("../controllers/messageController");
+      await forwardMessage(req, res);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+
 module.exports = router;

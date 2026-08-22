@@ -33,8 +33,13 @@ const initSocket = (server) => {
 
   const io = new Server(server, {
     cors: {
-      origin: "*",
+      origin: [
+        process.env.FRONTEND_URL || "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+      ],
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 
@@ -110,6 +115,7 @@ const initSocket = (server) => {
     socket.join(userRoom);
 
 
+
     // Update online status
     try {
 
@@ -134,6 +140,80 @@ const initSocket = (server) => {
 
       console.error(
         "ONLINE STATUS ERROR:",
+        error.message
+      );
+
+    }
+
+
+    // ==================================================
+    // AUTO-DELIVER: upgrade SENT → DELIVERED for all
+    // messages this user received while offline
+    // ==================================================
+
+    try {
+
+      const { Op } = require("sequelize");
+
+      // Find all chats this user belongs to
+      const myChats = await ChatParticipant.findAll({
+        where: { user_id: userId },
+        attributes: ["chat_id"],
+      });
+
+      const myChatIds = myChats.map((r) => r.chat_id);
+
+      if (myChatIds.length > 0) {
+
+        // Find SENT messages in those chats that were NOT sent by this user
+        const sentMessages = await Message.findAll({
+          where: {
+            chat_id: myChatIds,
+            sender_id: { [Op.ne]: userId },
+            status: "SENT",
+          },
+          attributes: ["id", "chat_id", "sender_id"],
+        });
+
+        if (sentMessages.length > 0) {
+
+          const sentIds = sentMessages.map((m) => m.id);
+
+          // Bulk update to DELIVERED
+          await Message.update(
+            { status: "DELIVERED" },
+            { where: { id: sentIds } }
+          );
+
+          // Group by chat_id and notify chat rooms
+          const byChatId = {};
+          sentMessages.forEach((m) => {
+            if (!byChatId[m.chat_id]) {
+              byChatId[m.chat_id] = [];
+            }
+            byChatId[m.chat_id].push(m.id);
+          });
+
+          Object.entries(byChatId).forEach(([chatId, msgIds]) => {
+            msgIds.forEach((msgId) => {
+              io.to(`chat:${chatId}`).emit("message_status", {
+                message_id: msgId,
+                status: "DELIVERED",
+              });
+            });
+          });
+
+          console.log(
+            `📬 Auto-delivered ${sentMessages.length} message(s) for user ${userId}`
+          );
+
+        }
+      }
+
+    } catch (error) {
+
+      console.error(
+        "AUTO-DELIVER ERROR:",
         error.message
       );
 
@@ -404,7 +484,16 @@ const initSocket = (server) => {
 
           // --------------------------------------------
           // USER-SPECIFIC NOTIFICATIONS
+          // Fetch sender name once for all notifications
           // --------------------------------------------
+
+          let senderName = null;
+          try {
+            const senderUser = await User.findByPk(userId, {
+              attributes: ["name"],
+            });
+            senderName = senderUser?.name || null;
+          } catch (_) {}
 
           const participants =
             await ChatParticipant.findAll({
@@ -447,6 +536,9 @@ const initSocket = (server) => {
 
                     sender_id:
                       userId,
+
+                    senderName:
+                      senderName,
 
                     content:
                       content,
@@ -716,8 +808,98 @@ const initSocket = (server) => {
 
 
     // ==================================================
+    // MARK CHAT READ
+    // ==================================================
+
+    socket.on(
+      "mark_chat_read",
+      async (data, callback) => {
+
+        try {
+
+          const chatId = Number(data?.chat_id);
+
+          if (!chatId) {
+
+            return callback?.({
+              success: false,
+              message: "chat_id is required",
+            });
+
+          }
+
+
+          const allowed =
+            await checkParticipant(
+              chatId,
+              userId
+            );
+
+
+          if (!allowed) {
+
+            return callback?.({
+              success: false,
+              message: "Access denied",
+            });
+
+          }
+
+
+          const { Op } = require("sequelize");
+
+          // Update all messages in this chat not sent by this user
+          await Message.update(
+            { status: "READ" },
+            {
+              where: {
+                chat_id: chatId,
+                sender_id: { [Op.ne]: userId },
+                status: { [Op.ne]: "READ" },
+              },
+            }
+          );
+
+
+          // Notify all clients in the chat room that messages are read
+          io
+            .to(`chat:${chatId}`)
+            .emit(
+              "chat_read",
+              {
+                chat_id: chatId,
+                reader_id: userId,
+              }
+            );
+
+
+          callback?.({
+            success: true,
+          });
+
+        } catch (error) {
+
+          console.error(
+            "MARK CHAT READ ERROR:",
+            error
+          );
+
+
+          callback?.({
+            success: false,
+            message: "Unable to mark chat as read",
+          });
+
+        }
+
+      }
+    );
+
+
+    // ==================================================
     // MESSAGE READ
     // ==================================================
+
 
     socket.on(
       "message_read",

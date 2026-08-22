@@ -271,9 +271,30 @@ const updateMessage = async (
       });
     }
 
+    // Enforce 15-minute limit
+    const diffMs = new Date() - new Date(message.createdAt);
+    const diffMins = diffMs / 1000 / 60;
+    if (diffMins > 15) {
+      return res.status(400).json({
+        success: false,
+        message: "Messages can only be edited within 15 minutes of sending",
+      });
+    }
+
     message.content = content;
 
     await message.save();
+
+    // Broadcast the update via socket
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`chat:${message.chat_id}`).emit("message_updated", {
+        id: message.id,
+        chat_id: message.chat_id,
+        content: message.content,
+        updatedAt: message.updatedAt,
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -303,6 +324,8 @@ const deleteMessage = async (
   res
 ) => {
   try {
+    const { mode = "everyone" } = req.query || {};
+
     const message =
       await Message.findByPk(
         req.params.id
@@ -315,24 +338,52 @@ const deleteMessage = async (
       });
     }
 
-    if (
-      Number(message.sender_id) !==
-        Number(req.user.id) &&
-      req.user.role !== "ADMIN"
-    ) {
+    // Access check: User must be a participant in this chat
+    const allowed = await isParticipant(message.chat_id, req.user.id);
+    if (!allowed) {
       return res.status(403).json({
         success: false,
-        message:
-          "You are not allowed to delete this message",
+        message: "Access denied",
       });
     }
 
-    await message.destroy();
+    if (mode === "everyone") {
+      // Only sender or ADMIN can delete for everyone
+      if (
+        Number(message.sender_id) !== Number(req.user.id) &&
+        req.user.role !== "ADMIN"
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You are not allowed to delete this message for everyone",
+        });
+      }
 
+      // Soft delete: update flag and set content
+      message.deleted_for_everyone = true;
+      message.content = "This message was deleted.";
+      await message.save();
+
+      // Broadcast the deletion via socket
+      const io = req.app.get("io");
+      if (io) {
+        io.to(`chat:${message.chat_id}`).emit("message_deleted", {
+          id: message.id,
+          chat_id: message.chat_id,
+          deleted_for_everyone: true,
+          content: message.content,
+        });
+      }
+    }
+
+    // If mode is "me", we just return success — the frontend will hide it locally using localStorage.
     return res.status(200).json({
       success: true,
       message:
-        "Message deleted successfully",
+        mode === "everyone"
+          ? "Message deleted for everyone successfully"
+          : "Message deleted for you successfully",
     });
   } catch (error) {
     console.error(
