@@ -143,8 +143,15 @@ const io = initSocket(server);
 app.set("io", io);
 
 
-server.listen(PORT, () => {
+// server.listen(PORT, () => {
+//   console.log(
+//     `🚀 Server (HTTP + Socket.IO) running on http://localhost:${PORT}`
+//   );
+// });
+
+
+server.listen(PORT, "0.0.0.0", () => {
   console.log(
-    `🚀 Server (HTTP + Socket.IO) running on http://localhost:${PORT}`
+    `🚀 Server (HTTP + Socket.IO) running on 0.0.0.0:${PORT}`
   );
 });
