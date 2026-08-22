@@ -4,8 +4,10 @@ function ChatList({
   onSelectChat,
   onlineUsers = {},
   currentUserId,
+  matchingNewUsers = [],
+  onStartChat = () => {},
 }) {
-  if (!chats || chats.length === 0) {
+  if ((!chats || chats.length === 0) && (!matchingNewUsers || matchingNewUsers.length === 0)) {
     return (
       <div className="empty-state" style={{ flex: 1 }}>
         <div className="empty-state-icon">💬</div>
@@ -55,72 +57,106 @@ function ChatList({
 
   return (
     <div className="chat-list">
-      {chats.map((chat) => {
-        const active = selectedChat?.id === chat.id;
+      {chats && chats.length > 0 && (
+        <>
+          {chats.map((chat) => {
+            const active = selectedChat?.id === chat.id;
 
-        // For DM chats try to detect if the other user is online
-        const otherParticipant = chat.participants?.find(
-          (p) => Number(p.user_id) !== Number(currentUserId)
-        );
-        const isOnline =
-          otherParticipant &&
-          (onlineUsers[otherParticipant.user_id]?.isOnline ??
-            otherParticipant.user?.isOnline);
+            // For DM chats try to detect if the other user is online
+            const otherParticipant = chat.participants?.find(
+              (p) => Number(p.user_id) !== Number(currentUserId)
+            );
+            const isOnline =
+              otherParticipant &&
+              (onlineUsers[otherParticipant.user_id]?.isOnline ??
+                otherParticipant.user?.isOnline);
 
-        return (
-          <button
-            key={chat.id}
-            type="button"
-            className={`chat-item ${active ? "active" : ""}`}
-            onClick={() => onSelectChat(chat)}
-          >
-            <div className="avatar">
-              {getInitial(chat)}
-              {chat.chat_type !== "GROUP" && (
-                <span
-                  className={`avatar-status-dot ${
-                    isOnline ? "online" : "offline"
-                  }`}
-                />
-              )}
-            </div>
-
-            <div className="chat-item-content">
-              <div className="chat-item-row">
-                <div className="chat-item-name">
-                  {getChatName(chat)}
+            return (
+              <button
+                key={chat.id}
+                type="button"
+                className={`chat-item ${active ? "active" : ""}`}
+                onClick={() => onSelectChat(chat)}
+              >
+                <div className="avatar">
+                  {getInitial(chat)}
+                  {chat.chat_type !== "GROUP" && (
+                    <span
+                      className={`avatar-status-dot ${
+                        isOnline ? "online" : "offline"
+                      }`}
+                    />
+                  )}
                 </div>
-                {chat.lastMessage?.createdAt && (
-                  <div className="chat-item-time">
-                    {new Date(
-                      chat.lastMessage.createdAt
-                    ).toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+
+                <div className="chat-item-content">
+                  <div className="chat-item-row">
+                    <div className="chat-item-name">
+                      {getChatName(chat)}
+                    </div>
+                    {chat.lastMessage?.createdAt && (
+                      <div className="chat-item-time">
+                        {new Date(
+                          chat.lastMessage.createdAt
+                        ).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="chat-item-row">
-                <div className="chat-preview">
-                  {getPreview(chat)}
+                  <div className="chat-item-row">
+                    <div className="chat-preview">
+                      {getPreview(chat)}
+                    </div>
+                    {chat.unreadCount > 0 && (
+                      <span
+                        className="unread-badge"
+                        title={`${chat.unreadCount} unread message${
+                          chat.unreadCount > 1 ? "s" : ""
+                        }`}
+                      >
+                        {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {chat.unreadCount > 0 && (
-                  <span
-                    className="unread-badge"
-                    title={`${chat.unreadCount} unread message${
-                      chat.unreadCount > 1 ? "s" : ""
-                    }`}
-                  >
-                    {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
-                  </span>
+              </button>
+            );
+          })}
+        </>
+      )}
+
+      {matchingNewUsers && matchingNewUsers.length > 0 && (
+        <>
+          <div className="chat-list-section-header">Start New Conversation</div>
+          {matchingNewUsers.map((userItem) => (
+            <button
+              key={userItem.id}
+              type="button"
+              className="chat-item new-user-chat-item"
+              onClick={() => onStartChat(userItem.id)}
+            >
+              <div className="avatar">
+                {userItem.name?.charAt(0)?.toUpperCase() || "?"}
+                {userItem.isOnline && (
+                  <span className="avatar-status-dot online" />
                 )}
               </div>
-            </div>
-          </button>
-        );
-      })}
+              <div className="chat-item-content">
+                <div className="chat-item-row">
+                  <div className="chat-item-name">{userItem.name}</div>
+                </div>
+                <div className="chat-item-row">
+                  <div className="chat-preview">{userItem.email}</div>
+                  <span className="start-chat-tag">Start Chat</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }

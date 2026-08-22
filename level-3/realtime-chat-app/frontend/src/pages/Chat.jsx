@@ -15,6 +15,7 @@ import ForwardModal from "../components/ForwardModal";
 import InfoModal from "../components/InfoModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 import UserProfileModal from "../components/UserProfileModal";
+import NewChatModal from "../components/NewChatModal";
 
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
@@ -36,6 +37,11 @@ function Chat() {
   const [onlineUsers, setOnlineUsers] = useState({});
   const [notifications, setNotifications] = useState({});
   const [toasts, setToasts] = useState([]);
+
+  // States for New Chat & Search
+  const [allUsers, setAllUsers] = useState([]);
+  const [newChatModalOpen, setNewChatModalOpen] = useState(false);
+  const [sidebarSearchQuery, setSidebarSearchQuery] = useState("");
 
   // States for advanced message actions
   const [editingMessageId, setEditingMessageId] = useState(null);
@@ -96,8 +102,22 @@ function Chat() {
   // LOAD CHATS
   // ========================================
 
+  const loadAllUsers = useCallback(async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/users`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.data.success) {
+        setAllUsers(response.data.data || []);
+      }
+    } catch (err) {
+      console.error("LOAD ALL USERS ERROR:", err);
+    }
+  }, [token]);
+
   const loadChats = useCallback(async () => {
     try {
+      await Promise.resolve();
       setChatsLoading(true);
       setError("");
 
@@ -137,19 +157,81 @@ function Chat() {
         ...initialOnline,
         ...prev, // preserve any live events
       }));
+
+      return data;
     } catch (err) {
       console.error("LOAD CHATS ERROR:", err);
       setError(
         err.response?.data?.message || "Unable to load chats"
       );
+      return [];
     } finally {
       setChatsLoading(false);
     }
   }, [token]);
 
+  const handleStartChat = async (targetUserId) => {
+    try {
+      // 1. Check if a DIRECT chat already exists in our chats list
+      const existingChat = chats.find(
+        (c) =>
+          c.chat_type === "DIRECT" &&
+          c.participants?.some(
+            (p) => Number(p.user_id) === Number(targetUserId)
+          )
+      );
+
+      if (existingChat) {
+        setNewChatModalOpen(false);
+        setSidebarSearchQuery("");
+        handleSelectChat(existingChat);
+        return;
+      }
+
+      // 2. Create the chat via backend API
+      const response = await axios.post(
+        `${API_URL}/api/chats`,
+        {
+          chat_type: "DIRECT",
+          participant_ids: [targetUserId],
+        },
+        {
+          headers: authHeaders,
+        }
+      );
+
+      if (response.data.success) {
+        const newChat = response.data.data;
+        setNewChatModalOpen(false);
+        setSidebarSearchQuery("");
+        
+        // Reload all chats so the new chat shows up in the sidebar
+        const freshChats = await loadChats();
+        
+        // Find fully enriched chat from fresh list
+        const matchedChat = freshChats.find(
+          (c) => Number(c.id) === Number(newChat.id)
+        );
+
+        if (matchedChat) {
+          handleSelectChat(matchedChat);
+        } else {
+          handleSelectChat(newChat);
+        }
+      }
+    } catch (err) {
+      console.error("START CHAT ERROR:", err);
+      alert(err.response?.data?.message || "Failed to start new chat.");
+    }
+  };
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadChats();
-  }, [loadChats]);
+    if (token) {
+      loadAllUsers();
+    }
+  }, [loadChats, loadAllUsers, token]);
 
   // Restore selected chat from localStorage on page reload
   useEffect(() => {
@@ -762,6 +844,33 @@ function Chat() {
     unreadCount: notifications[chat.id] || 0,
   }));
 
+  // Filter chats by search query
+  const filteredChats = chatsWithCounts.filter((chat) => {
+    const name = getChatName(chat).toLowerCase();
+    return name.includes(sidebarSearchQuery.toLowerCase());
+  });
+
+  // Get matching new users (excluding ourselves and those who already have a direct chat)
+  const matchingNewUsers = !sidebarSearchQuery.trim()
+    ? []
+    : allUsers.filter((userItem) => {
+        if (Number(userItem.id) === Number(user?.id)) return false;
+
+        const name = (userItem.name || "").toLowerCase();
+        const email = (userItem.email || "").toLowerCase();
+        const query = sidebarSearchQuery.toLowerCase();
+        const matchesQuery = name.includes(query) || email.includes(query);
+        if (!matchesQuery) return false;
+
+        // Check if a direct chat with this user already exists
+        const hasChat = chats.some(
+          (c) =>
+            c.chat_type === "DIRECT" &&
+            c.participants?.some((p) => Number(p.user_id) === Number(userItem.id))
+        );
+        return !hasChat;
+      });
+
   const chatStatus = getChatStatus(selectedChat);
   const chatName = getChatName(selectedChat);
 
@@ -769,12 +878,17 @@ function Chat() {
     <div className="chat-page">
       <div className="chat-container">
         <Sidebar
-          chats={chatsWithCounts}
+          chats={filteredChats}
           selectedChat={selectedChat}
           onSelectChat={handleSelectChat}
           loading={chatsLoading}
           onlineUsers={onlineUsers}
           onShowOwnProfile={handleShowOwnProfile}
+          onOpenNewChatModal={() => setNewChatModalOpen(true)}
+          searchQuery={sidebarSearchQuery}
+          onSearchChange={setSidebarSearchQuery}
+          matchingNewUsers={matchingNewUsers}
+          onStartChat={handleStartChat}
         />
 
         <section className="chat-window">
@@ -964,6 +1078,15 @@ function Chat() {
           onUpdate={() => {
             loadChats();
           }}
+        />
+      )}
+
+      {/* New Chat Modal */}
+      {newChatModalOpen && (
+        <NewChatModal
+          currentUserId={user.id}
+          onClose={() => setNewChatModalOpen(false)}
+          onStartChat={handleStartChat}
         />
       )}
 

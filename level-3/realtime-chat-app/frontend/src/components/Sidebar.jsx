@@ -8,6 +8,11 @@ function Sidebar({
   loading,
   onlineUsers,
   onShowOwnProfile,
+  onOpenNewChatModal,
+  searchQuery = "",
+  onSearchChange = () => {},
+  matchingNewUsers = [],
+  onStartChat = () => {},
 }) {
   const { user, logout } = useAuth();
 
@@ -19,18 +24,27 @@ function Sidebar({
           <div>
             <div className="sidebar-title">Baat Cheet</div>
             {user && (
-              <div
+              <button
+                type="button"
                 className="sidebar-user-name clickable-profile"
                 onClick={onShowOwnProfile}
                 title="View/Edit your profile"
               >
                 {user.name}
-              </div>
+              </button>
             )}
           </div>
         </div>
 
         <div className="sidebar-actions">
+          <button
+            type="button"
+            className="new-chat-button"
+            onClick={onOpenNewChatModal}
+            title="New Chat"
+          >
+            New Chat
+          </button>
           <button
             className="logout-button"
             onClick={logout}
@@ -38,6 +52,19 @@ function Sidebar({
           >
             Logout
           </button>
+        </div>
+      </div>
+
+      <div className="sidebar-search-wrapper">
+        <div className="sidebar-search-container">
+          <span className="sidebar-search-icon">🔍</span>
+          <input
+            type="text"
+            className="sidebar-search-input"
+            placeholder="Search or start new chat..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
         </div>
       </div>
 
@@ -52,6 +79,8 @@ function Sidebar({
           onSelectChat={onSelectChat}
           onlineUsers={onlineUsers}
           currentUserId={user?.id}
+          matchingNewUsers={matchingNewUsers}
+          onStartChat={onStartChat}
         />
       )}
     </aside>
