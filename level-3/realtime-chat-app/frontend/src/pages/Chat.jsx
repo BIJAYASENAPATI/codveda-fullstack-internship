@@ -876,7 +876,7 @@ function Chat() {
 
   return (
     <div className="chat-page">
-      <div className="chat-container">
+      <div className={`chat-container ${selectedChat ? "chat-selected" : ""}`}>
         <Sidebar
           chats={filteredChats}
           selectedChat={selectedChat}
@@ -907,6 +907,18 @@ function Chat() {
             <>
               {/* ── Header ── */}
               <header className="chat-header">
+                <button
+                  type="button"
+                  className="back-button"
+                  onClick={() => setSelectedChat(null)}
+                  title="Back to chats"
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                  </svg>
+                </button>
+
                 <div
                   className="chat-header-avatar"
                   onClick={handleShowOtherProfile}
